@@ -1,0 +1,286 @@
+// ============================================================
+// open-ats — Prisma Schema
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  RECRUITER
+  HIRING_MANAGER
+  INTERVIEWER
+  CANDIDATE
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SCREENING
+  PHONE_INTERVIEW
+  TECHNICAL
+  ONSITE
+  OFFER
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  PAUSED
+  CLOSED
+  ARCHIVED
+}
+
+enum InterviewType {
+  PHONE
+  VIDEO
+  ONSITE
+  TECHNICAL
+  PANEL
+  CASUAL
+}
+
+enum FeedbackScore {
+  STRONG_NO
+  NO
+  NEUTRAL
+  YES
+  STRONG_YES
+}
+
+// ─────────────────────────────────────────────
+// MODELS
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          UserRole  @default(RECRUITER)
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  refreshTokens RefreshToken[]
+  createdJobs   Job[]          @relation("CreatedBy")
+  applications  Application[]  @relation("RecruiterApplications")
+  interviews    Interview[]    @relation("InterviewerUser")
+  feedbacks     Feedback[]
+  notes         Note[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  jobs      Job[]
+  createdAt DateTime @default(now())
+
+  @@map("departments")
+}
+
+model Job {
+  id             String     @id @default(cuid())
+  title          String
+  description    String     @db.Text
+  requirements   String     @db.Text
+  location       String?
+  isRemote       Boolean    @default(false)
+  salaryMin      Int?
+  salaryMax      Int?
+  salaryCurrency String     @default("BRL")
+  status         JobStatus  @default(DRAFT)
+  departmentId   String?
+  createdById    String
+  closedAt       DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  department     Department?   @relation(fields: [departmentId], references: [id])
+  createdBy      User          @relation("CreatedBy", fields: [createdById], references: [id])
+  applications   Application[]
+  pipeline       PipelineStage[]
+
+  @@map("jobs")
+}
+
+model PipelineStage {
+  id           String        @id @default(cuid())
+  name         String
+  order        Int
+  jobId        String
+  color        String        @default("#6366f1")
+  createdAt    DateTime      @default(now())
+
+  job          Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@unique([jobId, order])
+  @@map("pipeline_stages")
+}
+
+model Candidate {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  phone           String?
+  linkedinUrl     String?
+  githubUrl       String?
+  portfolioUrl    String?
+  location        String?
+  currentTitle    String?
+  currentCompany  String?
+  summary         String?   @db.Text
+  skills          String[]  @default([])
+  yearsExperience Int?
+  source          String?   // linkedin, referral, job-board, etc.
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  applications    Application[]
+  resumes         Resume[]
+
+  // PostgreSQL Full Text Search vector
+  searchVector    Unsupported("tsvector")?
+
+  @@map("candidates")
+}
+
+model Resume {
+  id              String    @id @default(cuid())
+  candidateId     String
+  fileName        String
+  filePath        String
+  fileSize        Int
+  mimeType        String
+  rawText         String?   @db.Text
+  parsedData      Json?
+  aiSummary       String?   @db.Text
+  uploadedAt      DateTime  @default(now())
+
+  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@map("resumes")
+}
+
+model Application {
+  id             String            @id @default(cuid())
+  candidateId    String
+  jobId          String
+  recruiterId    String
+  stageId        String?
+  status         ApplicationStatus @default(APPLIED)
+  coverLetter    String?           @db.Text
+  aiScore        Float?
+  aiScoreDetails Json?
+  rejectedReason String?
+  appliedAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  candidate      Candidate      @relation(fields: [candidateId], references: [id])
+  job            Job            @relation(fields: [jobId], references: [id])
+  recruiter      User           @relation("RecruiterApplications", fields: [recruiterId], references: [id])
+  stage          PipelineStage? @relation(fields: [stageId], references: [id])
+  interviews     Interview[]
+  feedbacks      Feedback[]
+  notes          Note[]
+
+  @@unique([candidateId, jobId])
+  @@map("applications")
+}
+
+model Interview {
+  id            String        @id @default(cuid())
+  applicationId String
+  interviewerId String
+  type          InterviewType @default(VIDEO)
+  scheduledAt   DateTime
+  durationMin   Int           @default(60)
+  meetingUrl    String?
+  calendarEventId String?
+  notes         String?       @db.Text
+  completedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  application   Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewer   User          @relation("InterviewerUser", fields: [interviewerId], references: [id])
+  feedback      Feedback?
+
+  @@map("interviews")
+}
+
+model Feedback {
+  id            String        @id @default(cuid())
+  applicationId String
+  interviewId   String?       @unique
+  authorId      String
+  score         FeedbackScore
+  summary       String        @db.Text
+  strengths     String?       @db.Text
+  weaknesses    String?       @db.Text
+  recommendation String?      @db.Text
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  application   Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interview     Interview?    @relation(fields: [interviewId], references: [id])
+  author        User          @relation(fields: [authorId], references: [id])
+
+  @@map("feedbacks")
+}
+
+model Note {
+  id            String      @id @default(cuid())
+  applicationId String
+  authorId      String
+  content       String      @db.Text
+  isPinned      Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author        User        @relation(fields: [authorId], references: [id])
+
+  @@map("notes")
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  subject   String
+  body      String   @db.Text
+  variables String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("email_templates")
+}

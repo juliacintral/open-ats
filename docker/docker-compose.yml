@@ -1,0 +1,149 @@
+version: '3.9'
+
+services:
+  # ─────────────── FRONTEND ───────────────
+  frontend:
+    build:
+      context: ../apps/frontend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3333
+    depends_on:
+      - backend
+    networks:
+      - openats
+
+  # ─────────────── BACKEND ───────────────
+  backend:
+    build:
+      context: ../apps/backend
+      dockerfile: Dockerfile
+    ports:
+      - '3333:3333'
+    env_file:
+      - ../.env
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      - openats
+
+  # ─────────────── POSTGRES ───────────────
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: openats
+      POSTGRES_PASSWORD: openats
+      POSTGRES_DB: openats
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - openats
+
+  # ─────────────── REDIS ───────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - openats
+
+  # ─────────────── MINIO (Storage) ───────────────
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ':9001'
+    volumes:
+      - minio_data:/data
+    networks:
+      - openats
+
+  # ─────────────── MEILISEARCH (Search) ───────────────
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    restart: unless-stopped
+    ports:
+      - '7700:7700'
+    environment:
+      MEILI_ENV: development
+    volumes:
+      - meili_data:/meili_data
+    networks:
+      - openats
+
+  # ─────────────── OLLAMA (AI Local) ───────────────
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - '11434:11434'
+    volumes:
+      - ollama_data:/root/.ollama
+    # GPU support: uncomment below for NVIDIA GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    networks:
+      - openats
+
+  # ─────────────── METABASE (Analytics) ───────────────
+  metabase:
+    image: metabase/metabase:latest
+    restart: unless-stopped
+    ports:
+      - '3100:3000'
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: openats
+      MB_DB_PASS: openats
+      MB_DB_HOST: postgres
+    depends_on:
+      - postgres
+    networks:
+      - openats
+
+  # ─────────────── GRAFANA (Observability) ───────────────
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - '3200:3000'
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - openats
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  meili_data:
+  ollama_data:
+  uploads:
+  grafana_data:
+
+networks:
+  openats:
+    driver: bridge
