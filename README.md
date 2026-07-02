@@ -1,31 +1,28 @@
-# 🎯 open-ats
+# open-ats
 
-> Enterprise ATS (Applicant Tracking System) open source — inspired by Greenhouse, built 100% with free and self-hosted technologies.
+ATS enterprise open source, inspirado no Greenhouse, construdo 100% com tecnologias gratuitas e self-hosted. Nenhum plano pago, nenhuma surpresa no cartão.
+
+Esse projeto começou porque eu queria entender como um ATS de verdade funciona por dentro — do kanban de pipeline até o parsing de currículo com IA local.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Stack: Next.js + NestJS](https://img.shields.io/badge/stack-Next.js%20%2B%20NestJS-blue)](#tech-stack)
 [![AI: Ollama](https://img.shields.io/badge/AI-Ollama%20%7C%20Llama3-orange)](#ai-engine)
 
----
+## O que tem
 
-## ✨ Features
-
-- **Pipeline de vagas** — Kanban-style com stages customizáveis
+- **Pipeline de vagas** — Kanban com stages customizáveis
 - **Gestão de candidatos** — Perfis, histórico, notas e feedbacks
-- **Parsing de currículos com IA local** — PDF → LLM local (Ollama) → JSON estruturado
-- **Ranking de candidatos com IA** — Score automático por compatibilidade
-- **Autenticação JWT** — Refresh token, bcrypt, sem Auth0
+- **Parsing de currículo com IA local** — PDF → LLM (Ollama) → JSON estruturado
+- **Ranking de candidatos** — Score automático por compatibilidade
+- **Auth JWT** — Refresh token, bcrypt, sem Auth0
 - **Multi-papel** — Recrutadores, Hiring Managers, Candidatos
 - **Entrevistas & Feedbacks** — Agendamento com Google/Microsoft Calendar
 - **Dashboard & Analytics** — Metabase ou Apache Superset
 - **E-mail gratuito** — SMTP Gmail, Outlook ou Brevo free tier
 - **Busca full-text** — PostgreSQL FTS ou Meilisearch
 - **Storage de currículos** — Supabase Storage ou MinIO self-hosted
-- **Observabilidade** — Grafana + Prometheus + Loki
 
----
-
-## 🏗️ Tech Stack
+## Tech Stack
 
 ### Frontend
 | Tech | Versão | Função |
@@ -47,7 +44,7 @@
 | Redis | 7+ | Cache, filas, sessões |
 | Bull/BullMQ | latest | Filas de background jobs |
 
-### AI Engine
+### IA
 | Provider | Modelos | Tipo |
 |---|---|---|
 | Ollama | Llama 3, Qwen3, Mistral, DeepSeek | Local (self-hosted) |
@@ -55,9 +52,7 @@
 | OpenRouter | Modelos gratuitos | Cloud fallback |
 | LocalAI | OpenAI-compatible | Self-hosted |
 
----
-
-## 📁 Project Structure
+## Estrutura do projeto
 
 ```
 open-ats/
@@ -73,43 +68,37 @@ open-ats/
 ├── docs/
 │   ├── architecture.md
 │   ├── ai-providers.md
-│   └── deployment.md
 └── scripts/
     └── seed.ts
 ```
 
----
-
-## 🚀 Quick Start (Docker)
+## Quick Start com Docker
 
 ```bash
-# 1. Clone
+# Clone
 git clone https://github.com/juliacintral/open-ats.git
 cd open-ats
 
-# 2. Copie e configure o .env
+# Configure o .env
 cp .env.example .env
 
-# 3. Suba tudo com Docker Compose
+# Sobe tudo
 docker-compose up -d
 
-# 4. Rode as migrations
+# Aplica as migrations
 docker-compose exec backend npx prisma migrate deploy
 
-# 5. Seed inicial
+# Seed inicial
 docker-compose exec backend npx ts-node scripts/seed.ts
 
-# Acesse:
 # Frontend: http://localhost:3000
-# Backend API: http://localhost:3333
+# API: http://localhost:3333
 # Swagger: http://localhost:3333/api
 ```
 
----
+## Interface de IA
 
-## 🧠 AI Provider Interface
-
-Toda IA é abstraída por uma interface única — troque o provedor sem mudar o código de negócio:
+Toda IA é abstraida por uma interface única. Você troca o provedor sem mexer na lógica de negócio:
 
 ```typescript
 interface AIProvider {
@@ -120,30 +109,27 @@ interface AIProvider {
 }
 ```
 
-**Implementações incluídas:** `OllamaProvider` · `OpenRouterProvider` · `LocalAIProvider`
+**Implementações:** `OllamaProvider` · `OpenRouterProvider` · `LocalAIProvider`
 
----
-
-## 💰 Custo Operacional
+## Custo operacional
 
 | Ambiente | Custo | Stack |
 |---|---|---|
 | MVP / Dev local | **$0/mês** | Docker local + Ollama local |
 | Staging gratuito | **$0/mês** | Vercel + Neon Free + Supabase Storage |
-| Produção baixo custo | **~$5-20/mês** | VPS Docker + Neon Pro ou Supabase Pro |
-| Produção escalável | **~$30-60/mês** | Railway ou Render + PostgreSQL gerenciado |
+| Produção baixo custo | **~$5–20/mês** | VPS Docker + Neon Pro ou Supabase Pro |
+| Produção escalável | **~$30–60/mês** | Railway ou Render + PostgreSQL gerenciado |
 
----
+## Documentação
 
-## 📖 Documentação
-
-- [Arquitetura do Sistema](docs/architecture.md)
+- [Arquitetura](docs/architecture.md)
 - [Provedores de IA](docs/ai-providers.md)
 - [Guia de Deploy](docs/deployment.md)
-- [Variáveis de Ambiente](.env.example)
+
+## Licença
+
+MIT — usa, faz fork, contribui.
 
 ---
 
-## 📄 License
-
-MIT — use, fork, contribute.
+Feito com ❤️ juliacintral
